@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": ["ES2020"],
+    "moduleResolution": "node",
+    "strict": true,
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "k6/x/amqp":    ["./index.d.ts"],
+      "k6/x/amqp091": ["./index.d.ts"],
+      "k6/x/amqp10":  ["./index.d.ts"]
+    }
+  }
+}

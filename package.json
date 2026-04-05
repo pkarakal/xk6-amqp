@@ -1,0 +1,24 @@
+{
+  "name": "@xk6/amqp",
+  "version": "0.1.0",
+  "description": "TypeScript types for the xk6-amqp k6 extension (AMQP 0.9.1 and AMQP 1.0)",
+  "types": "index.d.ts",
+  "files": [
+    "index.d.ts"
+  ],
+  "license": "Apache-2.0",
+  "keywords": [
+    "k6",
+    "xk6",
+    "amqp",
+    "amqp091",
+    "amqp10",
+    "rabbitmq",
+    "types",
+    "typescript"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/grafana/xk6-amqp"
+  }
+}
