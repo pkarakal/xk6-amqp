@@ -15,18 +15,18 @@ const (
 // PublishOptions defines a message payload and its delivery options for AMQP 1.0.
 type PublishOptions struct {
 	// QueueName publishes directly to a queue. Mutually exclusive with Exchange.
-	QueueName string `json:"queueName,omitempty"`
+	QueueName string `json:"queueName,omitempty" js:"queueName"`
 	// Exchange publishes to an exchange with an optional RoutingKey.
-	Exchange   string `json:"exchange,omitempty"`
-	RoutingKey string `json:"routingKey,omitempty"`
+	Exchange   string `json:"exchange,omitempty"   js:"exchange"`
+	RoutingKey string `json:"routingKey,omitempty" js:"routingKey"`
 
-	Body        []byte `json:"body,omitempty"`
-	ContentType string `json:"contentType,omitempty"`
+	Body        []byte `json:"body,omitempty"        js:"body"`
+	ContentType string `json:"contentType,omitempty" js:"contentType"`
 	// Persistent sets the Durable flag on the AMQP message header.
-	Persistent    bool   `json:"persistent,omitempty"`
-	Subject       string `json:"subject,omitempty"`       // AMQP 1.0 Properties.Subject
-	CorrelationID string `json:"correlationId,omitempty"` // AMQP 1.0 Properties.CorrelationID
-	MessageID     string `json:"messageId,omitempty"`     // AMQP 1.0 Properties.MessageID
+	Persistent    bool   `json:"persistent,omitempty"    js:"persistent"`
+	Subject       string `json:"subject,omitempty"       js:"subject"`       // AMQP 1.0 Properties.Subject
+	CorrelationID string `json:"correlationId,omitempty" js:"correlationId"` // AMQP 1.0 Properties.CorrelationID
+	MessageID     string `json:"messageId,omitempty"     js:"messageId"`     // AMQP 1.0 Properties.MessageID
 }
 
 // Name satisfies k6common.PublishingOptions.

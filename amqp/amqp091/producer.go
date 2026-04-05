@@ -19,23 +19,23 @@ const (
 
 // PublishOptions defines a message payload and its delivery options.
 type PublishOptions struct {
-	QueueName     string        `json:"queueName,omitempty"`
-	Body          []byte        `json:"body,omitempty"`
-	Headers       rmqamqp.Table `json:"headers,omitempty"`
-	Exchange      string        `json:"exchange,omitempty"`
-	ContentType   string        `json:"contentType,omitempty"`
-	Mandatory     bool          `json:"mandatory,omitempty"`
-	Immediate     bool          `json:"immediate,omitempty"`
-	Persistent    bool          `json:"persistent,omitempty"`
-	CorrelationID string        `json:"correlationId,omitempty"`
-	ReplyTo       string        `json:"replyTo,omitempty"`
-	Expiration    string        `json:"expiration,omitempty"`
-	MessageID     string        `json:"messageId,omitempty"`
-	Timestamp     int64         `json:"timestamp,omitempty"` // unix epoch seconds
-	Type          string        `json:"type,omitempty"`
-	UserID        string        `json:"userId,omitempty"`
-	AppID         string        `json:"appId,omitempty"`
-	RoutingKey    string        `json:"routingKey,omitempty"`
+	QueueName     string        `json:"queueName,omitempty"    js:"queueName"`
+	Body          []byte        `json:"body,omitempty"         js:"body"`
+	Headers       rmqamqp.Table `json:"headers,omitempty"      js:"headers"`
+	Exchange      string        `json:"exchange,omitempty"     js:"exchange"`
+	ContentType   string        `json:"contentType,omitempty"  js:"contentType"`
+	Mandatory     bool          `json:"mandatory,omitempty"    js:"mandatory"`
+	Immediate     bool          `json:"immediate,omitempty"    js:"immediate"`
+	Persistent    bool          `json:"persistent,omitempty"   js:"persistent"`
+	CorrelationID string        `json:"correlationId,omitempty" js:"correlationId"`
+	ReplyTo       string        `json:"replyTo,omitempty"      js:"replyTo"`
+	Expiration    string        `json:"expiration,omitempty"   js:"expiration"`
+	MessageID     string        `json:"messageId,omitempty"    js:"messageId"`
+	Timestamp     int64         `json:"timestamp,omitempty"    js:"timestamp"` // unix epoch seconds
+	Type          string        `json:"type,omitempty"         js:"type"`
+	UserID        string        `json:"userId,omitempty"       js:"userId"`
+	AppID         string        `json:"appId,omitempty"        js:"appId"`
+	RoutingKey    string        `json:"routingKey,omitempty"   js:"routingKey"`
 }
 
 // Name satisfies k6common.PublishingOptions.
