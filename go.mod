@@ -3,7 +3,10 @@ module github.com/grafana/xk6-amqp
 go 1.25
 
 require (
+	github.com/Azure/go-amqp v1.5.0
+	github.com/grafana/sobek v0.0.0-20251209155516-22d1085c20a8
 	github.com/rabbitmq/amqp091-go v1.10.0
+	github.com/rabbitmq/rabbitmq-amqp-go-client v0.4.0
 	github.com/vmihailenco/msgpack/v5 v5.4.1
 	go.k6.io/k6 v1.4.2
 )
@@ -19,7 +22,6 @@ require (
 	github.com/go-sourcemap/sourcemap v2.1.4+incompatible // indirect
 	github.com/google/pprof v0.0.0-20251213031049-b05bdaca462f // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/grafana/sobek v0.0.0-20251209155516-22d1085c20a8 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.4 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/klauspost/compress v1.18.2 // indirect
@@ -28,7 +30,6 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mstoykov/atlas v0.0.0-20220811071828-388f114305dd // indirect
 	github.com/onsi/ginkgo v1.16.5 // indirect
-	github.com/onsi/gomega v1.33.0 // indirect
 	github.com/serenize/snaker v0.0.0-20201027110005-a7ad2135616e // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
