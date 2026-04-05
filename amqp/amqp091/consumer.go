@@ -45,7 +45,7 @@ func (c *Client) Listen(opts *ListenOptions) error {
 	}
 
 	msgs, err := ch.ConsumeWithContext(
-		c.vu.Context(),
+		c.consumerCtx,
 		opts.QueueName,
 		opts.Consumer,
 		opts.AutoAck,

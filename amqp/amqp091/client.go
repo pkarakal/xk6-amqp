@@ -41,11 +41,22 @@ type Client struct {
 	amqpChannel       *rmqamqp.Channel
 	connectionOptions *ConnectionOptions
 
+	// consumerCtx/consumerCancel live for the client lifetime (not a single
+	// iteration). Canceled in Close() so all consumer goroutines exit cleanly.
+	consumerCtx    context.Context
+	consumerCancel context.CancelFunc
 }
 
 // NewClient creates a new AMQP 0.9.1 client for the given VU.
 func NewClient(vu modules.VU, options *rmqamqp.Config, connOpts *ConnectionOptions) *Client {
-	return &Client{vu: vu, amqpOptions: options, connectionOptions: connOpts}
+	ctx, cancel := context.WithCancel(context.Background())
+	return &Client{
+		vu:                vu,
+		amqpOptions:       options,
+		connectionOptions: connOpts,
+		consumerCtx:       ctx,
+		consumerCancel:    cancel,
+	}
 }
 
 // connect establishes the client's connection to the AMQP broker.
@@ -127,8 +138,9 @@ func (c *Client) plainTCPDialer(dialer lib.DialContexter) dialContextFunc {
 	}
 }
 
-// Close closes the AMQP channel and connection.
+// Close stops all consumer goroutines and closes the AMQP channel and connection.
 func (c *Client) Close() error {
+	c.consumerCancel()
 	var err1, err2 error
 	if c.amqpChannel != nil {
 		err1 = c.amqpChannel.Close()

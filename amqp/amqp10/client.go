@@ -1,6 +1,7 @@
 package amqp10
 
 import (
+	"context"
 	"fmt"
 
 	k6common "github.com/grafana/xk6-amqp/amqp/common"
@@ -35,11 +36,22 @@ type Client struct {
 	amqpConnection    *rmq.AmqpConnection
 	connectionOptions *ConnectionOptions
 
+	// consumerCtx/consumerCancel live for the client lifetime (not a single
+	// iteration). Canceled in Close() so all consumer goroutines exit cleanly.
+	consumerCtx    context.Context
+	consumerCancel context.CancelFunc
 }
 
 // NewClient creates a new AMQP 1.0 client for the given VU.
 func NewClient(vu modules.VU, opts *rmq.AmqpConnOptions, connOpts *ConnectionOptions) *Client {
-	return &Client{vu: vu, amqpOptions: opts, connectionOptions: connOpts}
+	ctx, cancel := context.WithCancel(context.Background())
+	return &Client{
+		vu:                vu,
+		amqpOptions:       opts,
+		connectionOptions: connOpts,
+		consumerCtx:       ctx,
+		consumerCancel:    cancel,
+	}
 }
 
 // connect establishes the client's connection to the AMQP 1.0 broker.
@@ -86,8 +98,9 @@ func (c *Client) connect() error {
 	return nil
 }
 
-// Close closes the AMQP 1.0 connection.
+// Close stops all consumer goroutines and closes the AMQP 1.0 connection.
 func (c *Client) Close() error {
+	c.consumerCancel()
 	if c.amqpConnection == nil {
 		return nil
 	}

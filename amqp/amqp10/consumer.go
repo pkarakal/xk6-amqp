@@ -48,7 +48,7 @@ func (c *Client) Listen(opts *ListenOptions) error {
 		defer consumer.Close(context.Background()) //nolint:errcheck
 
 		for {
-			delivery, err := consumer.Receive(c.vu.Context())
+			delivery, err := consumer.Receive(c.consumerCtx)
 			if err != nil {
 				// Context cancelled or connection closed — exit cleanly.
 				return
