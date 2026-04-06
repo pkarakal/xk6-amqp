@@ -25,8 +25,16 @@ build:
 format:
 	go fmt ./...
 
-## test: Executes any unit tests.
+## test: Runs unit tests (no broker required).
 test:
-	go test -cover -race ./...
+	go test -short -cover -race ./...
 
-.PHONY: build clean format help test
+## test-integration: Runs all tests including integration (requires Docker).
+test-integration:
+	go test -cover -race -timeout=120s ./...
+
+## test-all: Alias for test-integration.
+test-all:
+	go test -cover -race -timeout=120s ./...
+
+.PHONY: build clean format help test test-integration test-all
