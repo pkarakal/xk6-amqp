@@ -1,8 +1,6 @@
 package amqp091
 
 import (
-	"fmt"
-
 	k6common "github.com/grafana/xk6-amqp/amqp/common"
 	rmqamqp "github.com/rabbitmq/amqp091-go"
 )
@@ -72,7 +70,6 @@ func (c *Client) Listen(opts *ListenOptions) error {
 				return listener(body)
 			})
 		}
-		fmt.Println("[DEBUG amqp091] consumer goroutine exited")
 	}()
 
 	return nil

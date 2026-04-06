@@ -28,10 +28,6 @@ func convertOpts[T any](method string, opts any) (*T, error) {
 	return target, nil
 }
 
-func errInvalidOptions(method string, got any) error {
-	return fmt.Errorf("%s: unexpected options type %T", method, got)
-}
-
 func errNotSupported(msg string) error {
 	return errors.New(msg)
 }
