@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/grafana/xk6-amqp/amqp/amqp091"
+	"github.com/pkarakal/xk6-amqp/amqp/amqp091"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	k6jscommon "go.k6.io/k6/js/common"

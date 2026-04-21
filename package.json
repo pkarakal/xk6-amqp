@@ -19,6 +19,6 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/grafana/xk6-amqp"
+    "url": "https://github.com/pkarakal/xk6-amqp"
   }
 }

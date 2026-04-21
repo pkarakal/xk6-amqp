@@ -1,7 +1,7 @@
 package amqp091
 
 import (
-	k6common "github.com/grafana/xk6-amqp/amqp/common"
+	k6common "github.com/pkarakal/xk6-amqp/amqp/common"
 	rmqamqp "github.com/rabbitmq/amqp091-go"
 )
 

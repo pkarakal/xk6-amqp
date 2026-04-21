@@ -1,34 +1,41 @@
-import Amqp from 'k6/x/amqp'
-import exec from 'k6/execution'
+// Example: one AMQP connection per VU.
+//
+// In the new Client API, declaring `const client = new Client(...)` at module
+// scope is sufficient — k6 re-evaluates module-scope code for each VU, so every
+// VU automatically gets its own isolated connection. No manual connection-ID
+// tracking (as in the legacy Amqp.start() API) is required.
+//
+// Run with:
+//   k6 run examples/connection-per-vu.js
+import { Client } from 'k6/x/amqp091';
+import exec from 'k6/execution';
 
 export const options = {
-  vus: 10,
-  duration: '30s',
-}
+  vus: 5,
+  duration: '10s',
+};
 
-const url = "amqp://guest:guest@localhost:5672/"
-const connIds = new Map()
+// One Client (and therefore one connection) is created per VU automatically.
+const client = new Client({
+  connectionOptions: { host: 'localhost', port: 5672, username: 'guest', password: 'guest' },
+});
 
-function getConnectionId (vuId) {
-  if (!connIds.has(vuId)) {
-    const connectionId = Amqp.start({ connection_url: url })
-    connIds.set(vuId, connectionId)
-    return connectionId
-  }
-  return connIds.get(vuId)
+export function setup() {
+  client.declareQueue({ name: 'k6-per-vu-queue', durable: false });
 }
 
 export default function () {
-  console.log("K6 amqp extension enabled, version: " + Amqp.version)
+  const vuId = exec.vu.idInInstance;
+  console.log(`VU ${vuId} publishing on its own connection`);
 
-  const connectionId = getConnectionId(exec.vu.idInInstance)
-  const queueName = 'K6 queue'
+  client.publish({
+    queueName: 'k6-per-vu-queue',
+    contentType: 'text/plain',
+    body: `Message from VU ${vuId}`,
+  });
+}
 
-  Amqp.publish({
-    connection_id: connectionId,
-    queue_name: queueName,
-    exchange: '',
-    content_type: 'text/plain',
-    body: 'Ping from k6'
-  })
+export function teardown() {
+  client.deleteQueue('k6-per-vu-queue');
+  client.close();
 }

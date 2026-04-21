@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	k6common "github.com/grafana/xk6-amqp/amqp/common"
+	k6common "github.com/pkarakal/xk6-amqp/amqp/common"
 	rmq "github.com/rabbitmq/rabbitmq-amqp-go-client/pkg/rabbitmqamqp"
 	k6jscommon "go.k6.io/k6/js/common"
 	"go.k6.io/k6/js/modules"

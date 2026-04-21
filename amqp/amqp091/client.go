@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"net"
 
-	k6common "github.com/grafana/xk6-amqp/amqp/common"
+	k6common "github.com/pkarakal/xk6-amqp/amqp/common"
 	rmqamqp "github.com/rabbitmq/amqp091-go"
 	k6jscommon "go.k6.io/k6/js/common"
 	"go.k6.io/k6/js/modules"

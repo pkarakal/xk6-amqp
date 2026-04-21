@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/xk6-amqp/amqp/amqp10"
+	"github.com/pkarakal/xk6-amqp/amqp/amqp10"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"

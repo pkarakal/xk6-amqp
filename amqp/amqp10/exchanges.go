@@ -1,16 +1,16 @@
 package amqp10
 
 import (
-	k6common "github.com/grafana/xk6-amqp/amqp/common"
+	k6common "github.com/pkarakal/xk6-amqp/amqp/common"
 	rmq "github.com/rabbitmq/rabbitmq-amqp-go-client/pkg/rabbitmqamqp"
 )
 
 // DeclareExchangeOptions holds parameters for declaring an exchange via AMQP 1.0 management.
 type DeclareExchangeOptions struct {
-	Name       string               `json:"name"`
+	Name       string                `json:"name"`
 	Kind       k6common.ExchangeKind `json:"kind"` // "direct" (default), "topic", "fanout", "headers"
-	AutoDelete bool                 `json:"autoDelete,omitempty"`
-	Arguments  map[string]any       `json:"args,omitempty"`
+	AutoDelete bool                  `json:"autoDelete,omitempty"`
+	Arguments  map[string]any        `json:"args,omitempty"`
 }
 
 // BindExchangeOptions holds parameters for binding one exchange to another.

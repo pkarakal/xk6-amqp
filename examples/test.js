@@ -1,45 +1,53 @@
-import Amqp from 'k6/x/amqp';
-import Queue from 'k6/x/amqp/queue';
+// Example: basic hello-world publish + consume using AMQP 0.9.1.
+// This is the simplest possible xk6-amqp script — a good starting point.
+//
+// Run with:
+//   k6 run examples/test.js
+import { Client } from 'k6/x/amqp091';
+import { sleep } from 'k6';
+
+export const options = {
+  vus: 2,
+  iterations: 4,
+};
+
+// Clients are created in the init context (no IO yet) and connected lazily.
+// Each VU that constructs a Client gets its own isolated connection.
+const client = new Client({
+  connectionOptions: { host: 'localhost', port: 5672, username: 'guest', password: 'guest' },
+});
+
+export function setup() {
+  // Declare the queue once before VUs start.
+  client.declareQueue({ name: 'k6-general', durable: false });
+}
+
+// Per-VU flag: each VU starts its consumer once on the first iteration.
+let _listening = false;
 
 export default function () {
-  console.log("K6 amqp extension enabled, version: " + Amqp.version)
-  const url = "amqp://guest:guest@localhost:5672/"
-  Amqp.start({
-    connection_url: url
-  })
-  console.log("Connection opened: " + url)
-  
-  const queueName = 'K6 general'
-  
-  Queue.declare({
-    name: queueName,
-    // durable: false,
-    // delete_when_unused: false,
-    // exclusive: false,
-    // no_wait: false,
-    // args: null
-  })
+  // listen() must be called from default(), not setup(), because the listener
+  // callback is dispatched on the VU event loop which only runs here.
+  if (!_listening) {
+    client.listen({
+      queueName: 'k6-general',
+      autoAck: true,
+      listener: (msg) => { console.log('Received:', msg); },
+    });
+    _listening = true;
+  }
 
-  console.log(queueName + " queue is ready")
+  client.publish({
+    queueName: 'k6-general',
+    body: 'Ping from k6',
+    contentType: 'text/plain',
+  });
 
-  Amqp.publish({
-    queue_name: queueName,
-    body: "Ping from k6",
-    content_type: "text/plain"
-    // exchange: '',
-    // mandatory: false,
-    // immediate: false,
-  })
+  // sleep() gives the event loop time to dispatch queued listener callbacks.
+  sleep(0.1);
+}
 
-  const listener = function(data) { console.log('received data: ' + data) }
-  Amqp.listen({
-    queue_name: queueName,
-    listener: listener,
-    auto_ack: true,
-    // consumer: '',
-    // exclusive: false,
-		// no_local: false,
-		// no_wait: false,
-    // args: null
-  })
+export function teardown() {
+  client.deleteQueue('k6-general');
+  client.close();
 }

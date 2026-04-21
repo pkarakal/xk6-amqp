@@ -3,7 +3,7 @@ package amqp_test
 import (
 	"testing"
 
-	amqpmod "github.com/grafana/xk6-amqp/amqp"
+	amqpmod "github.com/pkarakal/xk6-amqp/amqp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.k6.io/k6/js/modulestest"

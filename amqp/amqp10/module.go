@@ -8,12 +8,11 @@ import (
 	"fmt"
 
 	"github.com/grafana/sobek"
-	k6common "github.com/grafana/xk6-amqp/amqp/common"
+	k6common "github.com/pkarakal/xk6-amqp/amqp/common"
 	rmq "github.com/rabbitmq/rabbitmq-amqp-go-client/pkg/rabbitmqamqp"
 	"go.k6.io/k6/js/common"
 	"go.k6.io/k6/js/modules"
 )
-
 
 type (
 	// RootModule is the global module instance that will create ModuleInstance

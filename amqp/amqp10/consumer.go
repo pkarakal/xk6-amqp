@@ -3,14 +3,14 @@ package amqp10
 import (
 	"context"
 
-	k6common "github.com/grafana/xk6-amqp/amqp/common"
+	k6common "github.com/pkarakal/xk6-amqp/amqp/common"
 	rmq "github.com/rabbitmq/rabbitmq-amqp-go-client/pkg/rabbitmqamqp"
 )
 
 // ListenOptions defines options for consuming messages from a queue via AMQP 1.0.
 type ListenOptions struct {
 	QueueName      string                `json:"queueName"`
-	Consumer       string                `json:"consumer,omitempty"`       // receiver link name
+	Consumer       string                `json:"consumer,omitempty"` // receiver link name
 	AutoAck        bool                  `json:"autoAck,omitempty"`
 	InitialCredits int32                 `json:"initialCredits,omitempty"` // flow control; defaults to 256
 	Listener       k6common.ListenerType `js:"-"`                          // set from JS; not JSON-serialized

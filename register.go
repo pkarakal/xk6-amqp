@@ -2,8 +2,8 @@
 package amqp
 
 import (
-	amqp091module "github.com/grafana/xk6-amqp/amqp"
-	amqp10module "github.com/grafana/xk6-amqp/amqp/amqp10"
+	amqp091module "github.com/pkarakal/xk6-amqp/amqp"
+	amqp10module "github.com/pkarakal/xk6-amqp/amqp/amqp10"
 	"go.k6.io/k6/js/modules"
 )
 

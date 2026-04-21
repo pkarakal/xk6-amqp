@@ -1,19 +1,19 @@
 package amqp091
 
 import (
-	k6common "github.com/grafana/xk6-amqp/amqp/common"
+	k6common "github.com/pkarakal/xk6-amqp/amqp/common"
 	rmqamqp "github.com/rabbitmq/amqp091-go"
 )
 
 // DeclareExchangeOptions holds parameters for declaring an AMQP exchange.
 type DeclareExchangeOptions struct {
-	Name       string               `json:"name"`
+	Name       string                `json:"name"`
 	Kind       k6common.ExchangeKind `json:"kind"`
-	Durable    bool                 `json:"durable,omitempty"`
-	AutoDelete bool                 `json:"autoDelete,omitempty"`
-	Internal   bool                 `json:"internal,omitempty"`
-	NoWait     bool                 `json:"noWait,omitempty"`
-	Args       rmqamqp.Table        `json:"args,omitempty"`
+	Durable    bool                  `json:"durable,omitempty"`
+	AutoDelete bool                  `json:"autoDelete,omitempty"`
+	Internal   bool                  `json:"internal,omitempty"`
+	NoWait     bool                  `json:"noWait,omitempty"`
+	Args       rmqamqp.Table         `json:"args,omitempty"`
 }
 
 // DeleteExchangeOptions holds parameters for deleting an AMQP exchange.

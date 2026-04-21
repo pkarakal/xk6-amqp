@@ -1,17 +1,17 @@
 package amqp10
 
 import (
-	k6common "github.com/grafana/xk6-amqp/amqp/common"
+	k6common "github.com/pkarakal/xk6-amqp/amqp/common"
 	rmq "github.com/rabbitmq/rabbitmq-amqp-go-client/pkg/rabbitmqamqp"
 )
 
 // DeclareQueueOptions holds parameters for declaring a queue via AMQP 1.0 management.
 type DeclareQueueOptions struct {
-	Name       string            `json:"name"`
+	Name       string             `json:"name"`
 	QueueType  k6common.QueueType `json:"queueType,omitempty"` // "classic" (default), "quorum", "stream"
-	AutoDelete bool              `json:"autoDelete,omitempty"`
-	Exclusive  bool              `json:"exclusive,omitempty"`
-	Arguments  map[string]any    `json:"args,omitempty"`
+	AutoDelete bool               `json:"autoDelete,omitempty"`
+	Exclusive  bool               `json:"exclusive,omitempty"`
+	Arguments  map[string]any     `json:"args,omitempty"`
 }
 
 // BindQueueOptions holds parameters for binding a queue to an exchange via AMQP 1.0.
