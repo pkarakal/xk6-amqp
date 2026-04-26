@@ -2,7 +2,6 @@ package amqp10
 
 import (
 	"context"
-	"fmt"
 
 	k6common "github.com/pkarakal/xk6-amqp/amqp/common"
 	rmq "github.com/rabbitmq/rabbitmq-amqp-go-client/pkg/rabbitmqamqp"
@@ -14,20 +13,7 @@ import (
 var _ k6common.AMQPClient = (*Client)(nil)
 
 // ConnectionOptions holds the parameters needed to connect to an AMQP 1.0 broker.
-type ConnectionOptions struct {
-	Host     string `json:"host,omitempty"`
-	Username string `json:"username,omitempty"`
-	Password string `json:"password,omitempty"`
-	Port     int    `json:"port,omitempty"`
-}
-
-// ToConnectionString formats the options as an amqp:// URL.
-func (o *ConnectionOptions) ToConnectionString() string {
-	if o == nil {
-		return ""
-	}
-	return fmt.Sprintf("amqp://%s:%s@%s:%d", o.Username, o.Password, o.Host, o.Port)
-}
+type ConnectionOptions = k6common.BaseConnectionOptions
 
 // Client holds an AMQP 1.0 connection for a single VU.
 type Client struct {
@@ -74,6 +60,7 @@ func (c *Client) connect() error {
 
 	// Merge k6 TLS configuration. The AMQP 1.0 library does not expose a
 	// custom dial hook, so only TLS config can be integrated (not netext.Dialer).
+	// See README for implications on DNS overrides and network-level metrics.
 	if vuState.TLSConfig != nil {
 		if c.amqpOptions.TLSConfig == nil {
 			c.amqpOptions.TLSConfig = vuState.TLSConfig.Clone()

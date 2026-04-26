@@ -18,20 +18,7 @@ import (
 var _ k6common.AMQPClient = (*Client)(nil)
 
 // ConnectionOptions holds the parameters needed to connect to an AMQP broker.
-type ConnectionOptions struct {
-	Host     string `json:"host,omitempty"`
-	Username string `json:"username,omitempty"`
-	Password string `json:"password,omitempty"`
-	Port     int    `json:"port,omitempty"`
-}
-
-// ToConnectionString formats the options as an amqp:// URL.
-func (o *ConnectionOptions) ToConnectionString() string {
-	if o == nil {
-		return ""
-	}
-	return fmt.Sprintf("amqp://%s:%s@%s:%d", o.Username, o.Password, o.Host, o.Port)
-}
+type ConnectionOptions = k6common.BaseConnectionOptions
 
 // Client holds an AMQP 0.9.1 connection and channel for a single VU.
 type Client struct {
