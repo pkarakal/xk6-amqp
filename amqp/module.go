@@ -47,7 +47,7 @@ func (*RootModule) NewModuleInstance(vu modules.VU) modules.Instance {
 // Exports implements the modules.Instance interface and returns
 // the exports of the JS module.
 func (mi *ModuleInstance) Exports() modules.Exports {
-	return modules.Exports{Named: map[string]interface{}{
+	return modules.Exports{Named: map[string]any{
 		"Client": mi.newClient,
 	}}
 }
@@ -105,21 +105,15 @@ func (mi *ModuleInstance) newClient(call sobek.ConstructorCall) *sobek.Object {
 	return rt.ToValue(&jsClient{Client: client, rt: rt}).ToObject(rt)
 }
 
-// readListenOptions deserializes a ListenOptions from a sobek value, extracting
-// the listener callback separately (JSON marshaling cannot handle functions).
+// readListenOptions deserializes a ListenOptions from a sobek value using the
+// shared ExtractListener helper to pull out the JS callback.
 func readListenOptions(rt *sobek.Runtime, val sobek.Value) (*amqp091.ListenOptions, error) {
-	exported := val.Export()
-	m, ok := exported.(map[string]any)
-	if !ok {
-		return nil, fmt.Errorf("listen options must be an object, got %T", exported)
+	cleanedMap, listener, err := k6common.ExtractListener(rt, val)
+	if err != nil {
+		return nil, err
 	}
 
-	// Extract the listener before JSON round-trip (functions cannot be marshaled).
-	listenerRaw, hasListener := m["listener"]
-	_ = listenerRaw
-	delete(m, "listener")
-
-	data, err := json.Marshal(m)
+	data, err := json.Marshal(cleanedMap)
 	if err != nil {
 		return nil, fmt.Errorf("failed to serialize listen options: %w", err)
 	}
@@ -128,26 +122,7 @@ func readListenOptions(rt *sobek.Runtime, val sobek.Value) (*amqp091.ListenOptio
 		return nil, fmt.Errorf("invalid listen options: %w", err)
 	}
 
-	if !hasListener {
-		return nil, errors.New("listen options must include a listener function")
-	}
-
-	obj := val.ToObject(rt)
-	listenerVal := obj.Get("listener")
-	if listenerVal == nil || sobek.IsUndefined(listenerVal) || sobek.IsNull(listenerVal) {
-		return nil, errors.New("listen options must include a listener function")
-	}
-
-	callable, ok := sobek.AssertFunction(listenerVal)
-	if !ok {
-		return nil, errors.New("listener must be a function")
-	}
-
-	opts.Listener = func(msg string) error {
-		_, err := callable(sobek.Undefined(), rt.ToValue(msg))
-		return err
-	}
-
+	opts.Listener = listener
 	return opts, nil
 }
 

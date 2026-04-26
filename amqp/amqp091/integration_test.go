@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/pkarakal/xk6-amqp/amqp/amqp091"
+	k6common "github.com/pkarakal/xk6-amqp/amqp/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
@@ -81,8 +82,8 @@ func TestIntegration_FullRoundTrip(t *testing.T) {
 	require.NoError(t, client.Listen(&amqp091.ListenOptions{
 		QueueName: queueName,
 		AutoAck:   true,
-		Listener: func(msg string) error {
-			received <- msg
+		Listener: func(msg *k6common.Message) error {
+			received <- msg.Body
 			return nil
 		},
 	}))

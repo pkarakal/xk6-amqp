@@ -59,15 +59,40 @@ func (c *Client) Listen(opts *ListenOptions) error {
 
 	vu := c.vu
 	listener := opts.Listener
+	autoAck := opts.AutoAck
+
 	go func() {
 		defer ch.Close() //nolint:errcheck
 		for d := range msgs {
-			body := string(d.Body)
+			// Build ack/discard closures based on autoAck.
+			// When autoAck is true the broker already acked at delivery-time,
+			// so the manual handles are no-ops to prevent double-ack errors.
+			var accept func() error
+			var discard func(requeue bool) error
+			if autoAck {
+				accept = func() error { return nil }
+				discard = func(_ bool) error { return nil }
+			} else {
+				accept = func() error { return d.Ack(false) }
+				discard = func(requeue bool) error { return d.Nack(false, requeue) }
+			}
+
+			msg := &k6common.Message{
+				Body:          string(d.Body),
+				RoutingKey:    d.RoutingKey,
+				ContentType:   d.ContentType,
+				CorrelationID: d.CorrelationId,
+				MessageID:     d.MessageId,
+				Headers:       map[string]any(d.Headers),
+				Accept:        accept,
+				Discard:       discard,
+			}
+
 			// RegisterCallback schedules JS execution on the VU's event loop.
 			// The returned function MUST be called exactly once.
 			schedule := vu.RegisterCallback()
 			schedule(func() error {
-				return listener(body)
+				return listener(msg)
 			})
 		}
 	}()

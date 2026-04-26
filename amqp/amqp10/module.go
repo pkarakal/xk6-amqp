@@ -51,20 +51,11 @@ func (mi *ModuleInstance) Exports() modules.Exports {
 	}}
 }
 
-// newClient is the JS constructor for the AMQP 1.0 Client.
-//
-// It accepts a single options object:
-//
-//	new Client({
-//	  connectionOptions: { host, port, username, password },
-//	  options: { /* AmqpConnOptions fields */ },
-//	})
-//
-// The returned client is initially disconnected; the connection is established
-// lazily on the first publish/listen/management call.
 // jsClient is a thin wrapper around *Client exposed to sobek.
 // It promotes all methods from *Client and overrides Listen with a sobek-native
 // signature so the JS callback can be extracted correctly.
+// (Sobek host objects are read-only; overriding a reflected method via Set is
+// not possible, so the shadow must be present at reflect time.)
 type jsClient struct {
 	*Client
 	rt *sobek.Runtime
@@ -86,6 +77,17 @@ func (j *jsClient) Listen(call sobek.FunctionCall) sobek.Value {
 	return sobek.Undefined()
 }
 
+// newClient is the JS constructor for the AMQP 1.0 Client.
+//
+// It accepts a single options object:
+//
+//	new Client({
+//	  connectionOptions: { host, port, username, password },
+//	  options: { /* AmqpConnOptions fields */ },
+//	})
+//
+// The returned client is initially disconnected; the connection is established
+// lazily on the first publish/listen/management call.
 func (mi *ModuleInstance) newClient(call sobek.ConstructorCall) *sobek.Object {
 	rt := mi.vu.Runtime()
 
@@ -102,20 +104,15 @@ func (mi *ModuleInstance) newClient(call sobek.ConstructorCall) *sobek.Object {
 	return rt.ToValue(&jsClient{Client: client, rt: rt}).ToObject(rt)
 }
 
-// readListenOptions deserializes ListenOptions from a sobek value, extracting
-// the listener callback separately (JSON marshaling cannot handle functions).
+// readListenOptions deserializes ListenOptions from a sobek value using the
+// shared ExtractListener helper to pull out the JS callback.
 func readListenOptions(rt *sobek.Runtime, val sobek.Value) (*ListenOptions, error) {
-	exported := val.Export()
-	m, ok := exported.(map[string]any)
-	if !ok {
-		return nil, fmt.Errorf("listen options must be an object, got %T", exported)
+	cleanedMap, listener, err := k6common.ExtractListener(rt, val)
+	if err != nil {
+		return nil, err
 	}
 
-	// Extract the listener before JSON round-trip (functions cannot be marshaled).
-	_, hasListener := m["listener"]
-	delete(m, "listener")
-
-	data, err := json.Marshal(m)
+	data, err := json.Marshal(cleanedMap)
 	if err != nil {
 		return nil, fmt.Errorf("failed to serialize listen options: %w", err)
 	}
@@ -124,26 +121,7 @@ func readListenOptions(rt *sobek.Runtime, val sobek.Value) (*ListenOptions, erro
 		return nil, fmt.Errorf("invalid listen options: %w", err)
 	}
 
-	if !hasListener {
-		return nil, errors.New("listen options must include a listener function")
-	}
-
-	obj := val.ToObject(rt)
-	listenerVal := obj.Get("listener")
-	if listenerVal == nil || sobek.IsUndefined(listenerVal) || sobek.IsNull(listenerVal) {
-		return nil, errors.New("listen options must include a listener function")
-	}
-
-	callable, ok := sobek.AssertFunction(listenerVal)
-	if !ok {
-		return nil, errors.New("listener must be a function")
-	}
-
-	opts.Listener = func(msg string) error {
-		_, err := callable(sobek.Undefined(), rt.ToValue(msg))
-		return err
-	}
-
+	opts.Listener = listener
 	return opts, nil
 }
 

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/pkarakal/xk6-amqp/amqp/amqp10"
+	k6common "github.com/pkarakal/xk6-amqp/amqp/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
@@ -83,8 +84,8 @@ func TestIntegration10_FullRoundTrip(t *testing.T) {
 	require.NoError(t, client.Listen(&amqp10.ListenOptions{
 		QueueName: queueName,
 		AutoAck:   true,
-		Listener: func(msg string) error {
-			received <- msg
+		Listener: func(msg *k6common.Message) error {
+			received <- msg.Body
 			return nil
 		},
 	}))
@@ -118,8 +119,8 @@ func TestIntegration10_QuorumQueue(t *testing.T) {
 	require.NoError(t, client.Listen(&amqp10.ListenOptions{
 		QueueName: queueName,
 		AutoAck:   true,
-		Listener: func(msg string) error {
-			received <- msg
+		Listener: func(msg *k6common.Message) error {
+			received <- msg.Body
 			return nil
 		},
 	}))

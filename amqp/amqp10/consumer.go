@@ -22,6 +22,10 @@ func (o *ListenOptions) Name() string { return Name }
 // Listen binds to a queue and dispatches incoming messages to the Listener
 // callback in a background goroutine. The goroutine exits when the VU context
 // is cancelled or the consumer connection is closed.
+//
+// The JS listener is invoked via vu.RegisterCallback() so it always runs on
+// the VU's event loop thread. Calling JS from a plain goroutine is not safe
+// in sobek.
 func (c *Client) Listen(opts *ListenOptions) error {
 	if err := c.connect(); err != nil {
 		return err
@@ -54,19 +58,44 @@ func (c *Client) Listen(opts *ListenOptions) error {
 				return
 			}
 
-			body := string(delivery.Message().GetData())
+			rawMsg := delivery.Message()
+			msg := &k6common.Message{
+				Body:    string(rawMsg.GetData()),
+				Headers: rawMsg.ApplicationProperties,
+				Accept:  func() error { return delivery.Accept(context.Background()) },
+				// AMQP 1.0 does not support requeueing; the requeue parameter is ignored.
+				Discard: func(_ bool) error {
+					return delivery.Discard(context.Background(), nil)
+				},
+			}
+			if rawMsg.Properties != nil {
+				if rawMsg.Properties.Subject != nil {
+					msg.RoutingKey = *rawMsg.Properties.Subject
+				}
+				if rawMsg.Properties.ContentType != nil {
+					msg.ContentType = *rawMsg.Properties.ContentType
+				}
+				if id, ok := rawMsg.Properties.CorrelationID.(string); ok {
+					msg.CorrelationID = id
+				}
+				if id, ok := rawMsg.Properties.MessageID.(string); ok {
+					msg.MessageID = id
+				}
+			}
+
 			// RegisterCallback schedules JS execution on the VU's event loop.
 			// The returned function MUST be called exactly once.
 			schedule := vu.RegisterCallback()
 			schedule(func() error {
-				if cbErr := listener(body); cbErr != nil {
-					_ = delivery.Discard(context.Background(), nil)
-					return cbErr
-				}
+				cbErr := listener(msg)
 				if autoAck {
-					_ = delivery.Accept(context.Background())
+					if cbErr != nil {
+						_ = msg.Discard(false)
+						return cbErr
+					}
+					_ = msg.Accept()
 				}
-				return nil
+				return cbErr
 			})
 		}
 	}()
