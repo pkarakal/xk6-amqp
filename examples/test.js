@@ -32,7 +32,7 @@ export default function () {
     client.listen({
       queueName: 'k6-general',
       autoAck: true,
-      listener: (msg) => { console.log('Received:', msg); },
+      listener: (msg) => { console.log('Received:', msg.body); },
     });
     _listening = true;
   }

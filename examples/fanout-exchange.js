@@ -39,7 +39,7 @@ export default function () {
       client.listen({
         queueName: name,
         autoAck: true,
-        listener: (msg) => { console.log(`[${name}] broadcast received: ${msg}`); },
+        listener: (msg) => { console.log(`[${name}] broadcast received: ${msg.body}`); },
       });
     });
     _listening = true;

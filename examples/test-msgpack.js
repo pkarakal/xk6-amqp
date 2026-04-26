@@ -30,7 +30,7 @@ export default function () {
       queueName: 'k6-msgpack',
       autoAck: true,
       // The listener receives the raw msgpack-encoded bytes as a string.
-      listener: (msg) => { console.log('Received msgpack payload (raw bytes):', msg); },
+      listener: (msg) => { console.log('Received msgpack payload (raw bytes):', msg.body); },
     });
     _listening = true;
   }

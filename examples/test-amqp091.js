@@ -42,7 +42,7 @@ export default function () {
     client.listen({
       queueName: QUEUE,
       autoAck: true,
-      listener: (msg) => { console.log(`Received: ${msg}`); },
+      listener: (msg) => { console.log(`Received: ${msg.body}`); },
     });
     _listening = true;
   }

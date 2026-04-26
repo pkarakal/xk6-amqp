@@ -64,7 +64,7 @@ export default function () {
       queueName: QUEUE,
       autoAck: true,
       initialCredits: 100,  // higher credits for streaming workloads
-      listener: (msg) => { console.log(`Stream received: ${msg}`); },
+      listener: (msg) => { console.log(`Stream received: ${msg.body}`); },
     });
     _listening = true;
   }

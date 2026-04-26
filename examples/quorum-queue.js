@@ -56,7 +56,7 @@ export default function () {
       queueName: QUEUE,
       autoAck: true,
       initialCredits: 50,  // AMQP 1.0 flow control: prefetch up to 50 messages
-      listener: (msg) => { console.log(`Quorum queue received: ${msg}`); },
+      listener: (msg) => { console.log(`Quorum queue received: ${msg.body}`); },
     });
     _listening = true;
   }

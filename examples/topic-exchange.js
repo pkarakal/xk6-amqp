@@ -46,7 +46,7 @@ let _listening = false;
 
 export default function () {
   if (!_listening) {
-    const makeListener = (queueName) => (msg) => console.log(`[${queueName}] received: ${msg}`);
+    const makeListener = (queueName) => (msg) => console.log(`[${queueName}] received: ${msg.body}`);
     client.listen({ queueName: QUEUES.ordersAny,  autoAck: true, listener: makeListener(QUEUES.ordersAny) });
     client.listen({ queueName: QUEUES.ordersDeep, autoAck: true, listener: makeListener(QUEUES.ordersDeep) });
     client.listen({ queueName: QUEUES.critical,   autoAck: true, listener: makeListener(QUEUES.critical) });

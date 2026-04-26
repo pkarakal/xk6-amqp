@@ -41,7 +41,7 @@ export default function () {
             queueName: 'k6-queue',
             autoAck: true,
             listener: (msg) => {
-                console.log('Received:', msg);
+                console.log('Received:', msg.body);
             },
         });
         _listening = true;

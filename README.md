@@ -77,7 +77,7 @@ export default function () {
     client.listen({
       queueName: 'k6-queue',
       autoAck: true,
-      listener: (msg) => { console.log('Received:', msg); },
+      listener: (msg) => { console.log('Received:', msg.body); },
     });
     _listening = true;
   }
@@ -100,6 +100,8 @@ export function teardown() {
 ```
 
 ### AMQP 1.0
+
+> **Network limitation:** AMQP 1.0 connections bypass k6's `netext.Dialer`. As a result, k6's DNS override, proxy settings, and network-level metrics (e.g. `http_req_connecting`) do **not** apply to AMQP 1.0 traffic. Use AMQP 0.9.1 (`k6/x/amqp091`) if you require k6 network instrumentation.
 
 ```javascript
 import { Client } from 'k6/x/amqp10';
@@ -132,7 +134,7 @@ export default function () {
       queueName: 'k6-queue',
       autoAck: true,
       initialCredits: 256,  // AMQP 1.0 link flow control
-      listener: (msg) => { console.log('Received:', msg); },
+      listener: (msg) => { console.log('Received:', msg.body); },
     });
     _listening = true;
   }
@@ -222,7 +224,7 @@ Publish a message synchronously.
 
 #### `client.publishAsync(options)` — AMQP 0.9.1 only
 
-Identical options to `publish`. Returns `Promise<void>` that resolves when the channel write to the broker completes. Use with `async default()` and `await`:
+Identical options to `publish`. Returns `Promise<void>` that resolves when the broker **confirms delivery** via publisher confirms (`ch.Confirm`). The promise is rejected if the broker nacks the message or the VU context is cancelled. Use with `async default()` and `await`:
 
 ```javascript
 export default async function () {
@@ -236,7 +238,7 @@ export default async function () {
 }
 ```
 
-> **Note:** The promise resolves when the channel write succeeds, not when the broker persists the message to disk. For strict at-least-once guarantees, combine with durable queues and `persistent: true`.
+> **Note:** Publisher confirms operate at the broker level — they confirm that the message was received and enqueued, not that it was consumed or persisted to disk. For strict at-least-once delivery, combine with durable queues and `persistent: true`.
 
 ---
 
@@ -253,8 +255,8 @@ Start consuming messages from a queue. The `listener` callback is invoked on the
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `queueName` | `string` | — | Queue to consume from. |
-| `listener` | `(msg: string) => void` | — | Called for each message with the body as a string. |
-| `autoAck` | `boolean` | `false` | Automatically acknowledge on delivery. |
+| `listener` | `(msg: Message) => void` | — | Called for each received message. |
+| `autoAck` | `boolean` | `false` | Automatically acknowledge on delivery. When `false`, call `msg.accept()` or `msg.discard()`. |
 | `consumer` | `string` | `""` | Consumer tag. |
 | `exclusive` | `boolean` | `false` | Exclusive consumer access. |
 | `noLocal` | `boolean` | `false` | Do not deliver messages published by this connection. |
@@ -266,10 +268,45 @@ Start consuming messages from a queue. The `listener` callback is invoked on the
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `queueName` | `string` | — | Queue to consume from. |
-| `listener` | `(msg: string) => void` | — | Called for each message with the body as a string. |
-| `autoAck` | `boolean` | `false` | Automatically accept (ack) messages. |
+| `listener` | `(msg: Message) => void` | — | Called for each received message. |
+| `autoAck` | `boolean` | `false` | Automatically accept (ack) messages after the listener returns without error. When `false`, call `msg.accept()` or `msg.discard()`. |
 | `consumer` | `string` | `""` | Receiver link name. |
 | `initialCredits` | `number` | `256` | AMQP 1.0 link flow control credits (prefetch). |
+
+#### Message object
+
+Each listener callback receives a `Message` object with the following fields:
+
+| Field | Type | Description |
+|---|---|---|
+| `body` | `string` | Message payload decoded as UTF-8. |
+| `routingKey` | `string` | Routing key (0.9.1) or `Properties.Subject` (1.0). |
+| `contentType` | `string` | MIME content type. |
+| `correlationId` | `string` | Correlation ID (useful in RPC patterns). |
+| `messageId` | `string` | Message identifier. |
+| `headers` | `Record<string, unknown>` | Application headers (0.9.1) or application properties (1.0). |
+| `accept()` | `() => void` | Acknowledge the message. Only meaningful when `autoAck: false`. |
+| `discard(requeue?)` | `(boolean) => void` | Reject the message. Pass `true` to requeue (0.9.1 only; ignored for AMQP 1.0). Only meaningful when `autoAck: false`. |
+
+**Manual acknowledgement example:**
+
+```javascript
+client.listen({
+  queueName: 'k6-queue',
+  autoAck: false,  // hold messages until accept() or discard() is called
+  listener: (msg) => {
+    try {
+      const data = JSON.parse(msg.body);
+      console.log('Processing:', data, 'correlationId:', msg.correlationId);
+      msg.accept();                // broker removes the message
+    } catch (e) {
+      msg.discard(true);           // broker requeues for retry (AMQP 0.9.1 only)
+    }
+  },
+});
+```
+
+See [`examples/manual-ack.js`](./examples/manual-ack.js) for a complete working example with both protocols.
 
 ---
 
@@ -299,6 +336,8 @@ Binds a destination exchange to a source exchange.
 | AMQP 1.0 | `{ sourceExchange, destinationExchange, bindingKey?, args? }` |
 
 Returns: `""` for AMQP 0.9.1, a binding path string for AMQP 1.0.
+
+> **AMQP 1.0 field aliases:** The 0.9.1-style names `source`, `destination`, and `routingKey` are accepted as aliases for `sourceExchange`, `destinationExchange`, and `bindingKey`. The native AMQP 1.0 names take precedence when both are present.
 
 #### `client.unbindExchangeWithOptions(options)` — AMQP 0.9.1
 
@@ -339,6 +378,8 @@ Binds a queue to an exchange.
 | AMQP 1.0 | `{ sourceExchange, destinationQueue, bindingKey?, args? }` |
 
 Returns: `""` for AMQP 0.9.1, a binding path string for AMQP 1.0.
+
+> **AMQP 1.0 field aliases:** The 0.9.1-style names `exchangeName`, `queueName`, and `routingKey` are accepted as aliases for `sourceExchange`, `destinationQueue`, and `bindingKey`. The native AMQP 1.0 names take precedence when both are present.
 
 #### `client.unbindQueueWithOptions(options)` — AMQP 0.9.1
 
@@ -422,10 +463,11 @@ The [`examples/`](./examples/) directory contains runnable scripts for every sup
 ### Advanced patterns
 | File | Description |
 |---|---|
-| [`publish-async.js`](./examples/publish-async.js) | `publishAsync` + `async default()` with broker acknowledgement |
+| [`publish-async.js`](./examples/publish-async.js) | `publishAsync` + `async default()` with publisher confirms |
+| [`manual-ack.js`](./examples/manual-ack.js) | Manual ack/nack with `autoAck: false`, `msg.accept()`, `msg.discard()` |
 | [`topic-exchange.js`](./examples/topic-exchange.js) | Topic exchange with `*` / `#` wildcard routing keys |
 | [`fanout-exchange.js`](./examples/fanout-exchange.js) | Fanout exchange broadcasting to multiple queues |
-| [`rpc-request-reply.js`](./examples/rpc-request-reply.js) | RPC pattern using `correlationId` + `replyTo` |
+| [`rpc-request-reply.js`](./examples/rpc-request-reply.js) | RPC pattern using `msg.correlationId` + `replyTo` |
 | [`connection-per-vu.js`](./examples/connection-per-vu.js) | Per-VU connection isolation |
 | [`test-msgpack.js`](./examples/test-msgpack.js) | MessagePack serialization |
 

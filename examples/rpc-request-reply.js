@@ -6,10 +6,8 @@
 //
 // This example is self-contained: each VU acts as both the RPC client AND the
 // "server" by listening to the request queue and echoing responses back.
-// The loopback is possible because we capture the replyTo queue name in a
-// closure — a real server would read it from the AMQP message properties
-// (the current listener callback receives only the message body string, not
-// the full AMQP envelope).
+// The server uses msg.correlationId and msg.headers from the Message envelope
+// to route and annotate the reply correctly.
 //
 // Per-VU exclusive reply queues:
 //   - declared with exclusive: true so only this VU's connection can access them
@@ -50,25 +48,27 @@ export default function () {
     client.declareQueue({ name: replyQueue, exclusive: true, deleteWhenUnused: true });
 
     // Listen for replies addressed to this VU.
+    // msg.correlationId echoes the correlationId set by the server.
     client.listen({
       queueName: replyQueue,
       autoAck: true,
-      listener: (msg) => { console.log(`VU ${vuId} received reply: ${msg}`); },
+      listener: (msg) => {
+        console.log(`VU ${vuId} received reply: ${msg.body} (correlationId: ${msg.correlationId})`);
+      },
     });
 
     // Simulate the RPC server: consume requests and echo responses.
     // In production the server is a separate process that reads the replyTo
-    // and correlationId from the AMQP message properties — not from the body.
-    // Here we use a closure over replyQueue to route the echo back correctly.
+    // and correlationId from msg.routingKey / msg.correlationId / msg.headers.
     client.listen({
       queueName: REQUEST_QUEUE,
       autoAck: true,
       listener: (msg) => {
         client.publish({
           queueName: replyQueue,
-          body: `Echo: ${msg}`,
+          body: `Echo: ${msg.body}`,
           contentType: 'text/plain',
-          correlationId: `corr-${vuId}`,
+          correlationId: msg.correlationId,
         });
       },
     });
