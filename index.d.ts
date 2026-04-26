@@ -13,6 +13,39 @@ declare module 'k6/x/amqp091' {
   /** AMQP exchange type. */
   export type ExchangeKind = 'direct' | 'topic' | 'fanout' | 'headers';
 
+  /**
+   * A received AMQP message passed to the {@link ListenOptions.listener} callback.
+   *
+   * `accept` and `discard` are meaningful only when `autoAck` is `false`.
+   * When `autoAck` is `true` they are no-ops — the broker acknowledges
+   * delivery automatically.
+   */
+  export interface Message {
+    /** Message payload decoded as a UTF-8 string. */
+    body:            string;
+    /** Routing key the message was published with. */
+    routingKey?:     string;
+    /** MIME content type (e.g. `"application/json"`). */
+    contentType?:    string;
+    /** Correlation identifier set by the publisher. */
+    correlationId?:  string;
+    /** Application headers attached to the message. */
+    headers?:        Record<string, unknown>;
+    /** Message identifier set by the publisher. */
+    messageId?:      string;
+    /**
+     * Acknowledge the message.
+     * Only meaningful when `autoAck` is `false`.
+     */
+    accept(): void;
+    /**
+     * Reject the message.
+     * @param requeue - If `true` the broker requeues the message.
+     * Only meaningful when `autoAck` is `false`.
+     */
+    discard(requeue?: boolean): void;
+  }
+
   /** Options used to establish a broker connection. */
   export interface ConnectionOptions {
     host:     string;
@@ -79,8 +112,12 @@ declare module 'k6/x/amqp091' {
     noWait?:    boolean;
     /** Additional arguments passed to the broker. */
     args?:      Record<string, unknown>;
-    /** Called for each received message with the message body as a string. */
-    listener:   (msg: string) => void;
+    /**
+     * Called for each received message.
+     * When `autoAck` is `false`, call `msg.accept()` or `msg.discard()` to
+     * acknowledge or reject the message explicitly.
+     */
+    listener:   (msg: Message) => void;
   }
 
   /** Options for {@link Client.declareExchange}. */
@@ -177,7 +214,11 @@ declare module 'k6/x/amqp091' {
     /** Publish a message synchronously. */
     publish(options: PublishOptions): void;
 
-    /** Publish a message asynchronously; resolves when the broker confirms delivery. */
+    /**
+     * Publish a message asynchronously using publisher confirms.
+     * The returned promise resolves when the broker acknowledges delivery,
+     * and rejects if the broker nacks the message or the VU context is cancelled.
+     */
     publishAsync(options: PublishOptions): Promise<void>;
 
     /**
@@ -240,6 +281,41 @@ declare module 'k6/x/amqp10' {
   /** RabbitMQ queue variant. Quorum and Stream are AMQP 1.0 only. */
   export type QueueType = 'classic' | 'quorum' | 'stream';
 
+  /**
+   * A received AMQP 1.0 message passed to the {@link ListenOptions.listener} callback.
+   *
+   * `accept` and `discard` are meaningful only when `autoAck` is `false`.
+   * When `autoAck` is `true` the extension calls `accept` automatically after
+   * the listener returns without error.
+   *
+   * **Note:** AMQP 1.0 has no concept of requeuing; the `requeue` parameter
+   * of `discard` is accepted but ignored.
+   */
+  export interface Message {
+    /** Message payload decoded as a UTF-8 string. */
+    body:            string;
+    /** Maps to AMQP 1.0 Properties.Subject. */
+    routingKey?:     string;
+    /** MIME content type from AMQP 1.0 Properties.ContentType. */
+    contentType?:    string;
+    /** Correlation identifier from AMQP 1.0 Properties.CorrelationID. */
+    correlationId?:  string;
+    /** Application properties attached to the message. */
+    headers?:        Record<string, unknown>;
+    /** Message identifier from AMQP 1.0 Properties.MessageID. */
+    messageId?:      string;
+    /**
+     * Acknowledge (accept) the message.
+     * Only meaningful when `autoAck` is `false`.
+     */
+    accept(): void;
+    /**
+     * Reject (discard) the message. The `requeue` parameter is ignored for AMQP 1.0.
+     * Only meaningful when `autoAck` is `false`.
+     */
+    discard(requeue?: boolean): void;
+  }
+
   /** Options used to establish a broker connection. */
   export interface ConnectionOptions {
     host:     string;
@@ -290,8 +366,12 @@ declare module 'k6/x/amqp10' {
     autoAck?:         boolean;
     /** AMQP 1.0 link flow control credits. Defaults to 256. */
     initialCredits?:  number;
-    /** Called for each received message with the message body as a string. */
-    listener:         (msg: string) => void;
+    /**
+     * Called for each received message.
+     * When `autoAck` is `false`, call `msg.accept()` or `msg.discard()` to
+     * acknowledge or reject the message explicitly.
+     */
+    listener:         (msg: Message) => void;
   }
 
   /** Options for {@link Client.declareExchange}. */
@@ -303,12 +383,26 @@ declare module 'k6/x/amqp10' {
     args?:       Record<string, unknown>;
   }
 
-  /** Options for {@link Client.bindExchange}. */
+  /**
+   * Options for {@link Client.bindExchange}.
+   *
+   * Both AMQP 1.0 native names and 0.9.1-style aliases are accepted.
+   * Native names take precedence when both are provided.
+   */
   export interface BindExchangeOptions {
-    sourceExchange:      string;
-    destinationExchange: string;
-    bindingKey?:         string;
-    args?:               Record<string, unknown>;
+    /** Source exchange name (AMQP 1.0 native). */
+    sourceExchange?:      string;
+    /** Destination exchange name (AMQP 1.0 native). */
+    destinationExchange?: string;
+    /** Binding key (AMQP 1.0 native). */
+    bindingKey?:          string;
+    /** Alias for `sourceExchange` (0.9.1 style). */
+    source?:              string;
+    /** Alias for `destinationExchange` (0.9.1 style). */
+    destination?:         string;
+    /** Alias for `bindingKey` (0.9.1 style). */
+    routingKey?:          string;
+    args?:                Record<string, unknown>;
   }
 
   /** Options for {@link Client.declareQueue}. */
@@ -322,12 +416,26 @@ declare module 'k6/x/amqp10' {
     args?:       Record<string, unknown>;
   }
 
-  /** Options for {@link Client.bindQueue}. */
+  /**
+   * Options for {@link Client.bindQueue}.
+   *
+   * Both AMQP 1.0 native names and 0.9.1-style aliases are accepted.
+   * Native names take precedence when both are provided.
+   */
   export interface BindQueueOptions {
-    sourceExchange:   string;
-    destinationQueue: string;
-    bindingKey?:      string;
-    args?:            Record<string, unknown>;
+    /** Source exchange name (AMQP 1.0 native). */
+    sourceExchange?:   string;
+    /** Destination queue name (AMQP 1.0 native). */
+    destinationQueue?: string;
+    /** Binding key (AMQP 1.0 native). */
+    bindingKey?:       string;
+    /** Alias for `sourceExchange` (0.9.1 style). */
+    exchangeName?:     string;
+    /** Alias for `destinationQueue` (0.9.1 style). */
+    queueName?:        string;
+    /** Alias for `bindingKey` (0.9.1 style). */
+    routingKey?:       string;
+    args?:             Record<string, unknown>;
   }
 
   /** Options passed to the {@link Client} constructor. */
