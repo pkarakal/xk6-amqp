@@ -43,6 +43,13 @@ type AMQPClient interface {
 	io.Closer
 }
 
+// QueueInfo is the normalised queue metadata returned by InspectQueue.
+type QueueInfo struct {
+	Name      string `json:"name"`
+	Messages  int    `json:"messages"`
+	Consumers int    `json:"consumers"`
+}
+
 // QueueManager groups queue lifecycle operations.
 // The opts parameter accepts the protocol-specific options struct pointer
 // (e.g. *amqp091.DeclareQueueOptions or *amqp10.DeclareQueueOptions).
@@ -52,7 +59,7 @@ type QueueManager interface {
 	BindQueue(opts any) (string, error)
 	UnbindQueue(bindingPath string) error
 	PurgeQueue(name string) (int, error)
-	InspectQueue(name string) (any, error)
+	InspectQueue(name string) (*QueueInfo, error)
 }
 
 // ExchangeManager groups exchange lifecycle operations.

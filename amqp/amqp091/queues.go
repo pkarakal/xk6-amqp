@@ -1,6 +1,7 @@
 package amqp091
 
 import (
+	k6common "github.com/pkarakal/xk6-amqp/amqp/common"
 	rmqamqp "github.com/rabbitmq/amqp091-go"
 )
 
@@ -12,13 +13,6 @@ type DeclareQueueOptions struct {
 	Exclusive        bool          `json:"exclusive,omitempty"`
 	NoWait           bool          `json:"noWait,omitempty"`
 	Args             rmqamqp.Table `json:"args,omitempty"`
-}
-
-// DeleteQueueOptions holds parameters for deleting an AMQP queue.
-type DeleteQueueOptions struct {
-	IfUnused bool `json:"ifUnused,omitempty"`
-	IfEmpty  bool `json:"ifEmpty,omitempty"`
-	NoWait   bool `json:"noWait,omitempty"`
 }
 
 // BindQueueOptions holds parameters for binding a queue to an exchange.
@@ -130,7 +124,7 @@ func (c *Client) PurgeQueue(name string) (int, error) {
 }
 
 // InspectQueue returns metadata about a queue without modifying it.
-func (c *Client) InspectQueue(name string) (any, error) {
+func (c *Client) InspectQueue(name string) (*k6common.QueueInfo, error) {
 	if err := c.connect(c.connectionOptions); err != nil {
 		return nil, err
 	}
@@ -146,5 +140,9 @@ func (c *Client) InspectQueue(name string) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return q, nil
+	return &k6common.QueueInfo{
+		Name:      q.Name,
+		Messages:  q.Messages,
+		Consumers: q.Consumers,
+	}, nil
 }

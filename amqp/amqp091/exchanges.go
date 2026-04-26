@@ -16,12 +16,6 @@ type DeclareExchangeOptions struct {
 	Args       rmqamqp.Table         `json:"args,omitempty"`
 }
 
-// DeleteExchangeOptions holds parameters for deleting an AMQP exchange.
-type DeleteExchangeOptions struct {
-	IfUnused bool `json:"ifUnused,omitempty"`
-	NoWait   bool `json:"noWait,omitempty"`
-}
-
 // BindExchangeOptions holds parameters for binding one exchange to another.
 type BindExchangeOptions struct {
 	Source      string        `json:"source"`

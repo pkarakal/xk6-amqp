@@ -14,11 +14,18 @@ type DeclareExchangeOptions struct {
 }
 
 // BindExchangeOptions holds parameters for binding one exchange to another.
+// AMQP 1.0-native field names take precedence when both naming conventions are present.
 type BindExchangeOptions struct {
-	SourceExchange      string         `json:"sourceExchange"`
-	DestinationExchange string         `json:"destinationExchange"`
+	// AMQP 1.0 native names
+	SourceExchange      string         `json:"sourceExchange,omitempty"`
+	DestinationExchange string         `json:"destinationExchange,omitempty"`
 	BindingKey          string         `json:"bindingKey,omitempty"`
 	Arguments           map[string]any `json:"args,omitempty"`
+
+	// AMQP 0.9.1 compatibility aliases (lower priority)
+	Source      string `json:"source,omitempty"`      // alias for SourceExchange
+	Destination string `json:"destination,omitempty"` // alias for DestinationExchange
+	RoutingKey  string `json:"routingKey,omitempty"`  // alias for BindingKey
 }
 
 // DeclareExchange declares an exchange on the broker. Satisfies k6common.ExchangeManager.
@@ -57,6 +64,8 @@ func (c *Client) DeleteExchange(name string) error {
 
 // BindExchange binds a destination exchange to a source exchange and returns the binding path.
 // The returned path is required by UnbindExchange.
+// Both AMQP 1.0-native field names (sourceExchange, destinationExchange, bindingKey) and
+// AMQP 0.9.1-style aliases (source, destination, routingKey) are accepted.
 func (c *Client) BindExchange(opts any) (string, error) {
 	o, err := convertOpts[BindExchangeOptions]("BindExchange", opts)
 	if err != nil {
@@ -65,10 +74,15 @@ func (c *Client) BindExchange(opts any) (string, error) {
 	if err := c.connect(); err != nil {
 		return "", err
 	}
+
+	sourceExchange := coalesce(o.SourceExchange, o.Source)
+	destinationExchange := coalesce(o.DestinationExchange, o.Destination)
+	bindingKey := coalesce(o.BindingKey, o.RoutingKey)
+
 	return c.amqpConnection.Management().Bind(c.vu.Context(), &rmq.ExchangeToExchangeBindingSpecification{
-		SourceExchange:      o.SourceExchange,
-		DestinationExchange: o.DestinationExchange,
-		BindingKey:          o.BindingKey,
+		SourceExchange:      sourceExchange,
+		DestinationExchange: destinationExchange,
+		BindingKey:          bindingKey,
 		Arguments:           o.Arguments,
 	})
 }
@@ -79,4 +93,12 @@ func (c *Client) UnbindExchange(bindingPath string) error {
 		return err
 	}
 	return c.amqpConnection.Management().Unbind(c.vu.Context(), bindingPath)
+}
+
+// coalesce returns the first non-empty string from the arguments.
+func coalesce(a, b string) string {
+	if a != "" {
+		return a
+	}
+	return b
 }

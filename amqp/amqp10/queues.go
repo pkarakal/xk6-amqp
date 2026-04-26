@@ -15,11 +15,18 @@ type DeclareQueueOptions struct {
 }
 
 // BindQueueOptions holds parameters for binding a queue to an exchange via AMQP 1.0.
+// AMQP 1.0-native field names take precedence when both naming conventions are present.
 type BindQueueOptions struct {
-	SourceExchange   string         `json:"sourceExchange"`
-	DestinationQueue string         `json:"destinationQueue"`
+	// AMQP 1.0 native names
+	SourceExchange   string         `json:"sourceExchange,omitempty"`
+	DestinationQueue string         `json:"destinationQueue,omitempty"`
 	BindingKey       string         `json:"bindingKey,omitempty"`
 	Arguments        map[string]any `json:"args,omitempty"`
+
+	// AMQP 0.9.1 compatibility aliases (lower priority)
+	ExchangeName string `json:"exchangeName,omitempty"` // alias for SourceExchange
+	QueueName    string `json:"queueName,omitempty"`    // alias for DestinationQueue
+	RoutingKey   string `json:"routingKey,omitempty"`   // alias for BindingKey
 }
 
 // DeclareQueue declares a queue on the broker. Satisfies k6common.QueueManager.
@@ -60,6 +67,8 @@ func (c *Client) DeleteQueue(name string) error {
 
 // BindQueue binds a queue to an exchange and returns the binding path.
 // The returned path is required by UnbindQueue.
+// Both AMQP 1.0-native field names (sourceExchange, destinationQueue, bindingKey) and
+// AMQP 0.9.1-style aliases (exchangeName, queueName, routingKey) are accepted.
 func (c *Client) BindQueue(opts any) (string, error) {
 	o, err := convertOpts[BindQueueOptions]("BindQueue", opts)
 	if err != nil {
@@ -68,10 +77,15 @@ func (c *Client) BindQueue(opts any) (string, error) {
 	if err := c.connect(); err != nil {
 		return "", err
 	}
+
+	sourceExchange := coalesce(o.SourceExchange, o.ExchangeName)
+	destinationQueue := coalesce(o.DestinationQueue, o.QueueName)
+	bindingKey := coalesce(o.BindingKey, o.RoutingKey)
+
 	return c.amqpConnection.Management().Bind(c.vu.Context(), &rmq.ExchangeToQueueBindingSpecification{
-		SourceExchange:   o.SourceExchange,
-		DestinationQueue: o.DestinationQueue,
-		BindingKey:       o.BindingKey,
+		SourceExchange:   sourceExchange,
+		DestinationQueue: destinationQueue,
+		BindingKey:       bindingKey,
 		Arguments:        o.Arguments,
 	})
 }
@@ -93,7 +107,7 @@ func (c *Client) PurgeQueue(name string) (int, error) {
 }
 
 // InspectQueue returns metadata about a queue.
-func (c *Client) InspectQueue(name string) (any, error) {
+func (c *Client) InspectQueue(name string) (*k6common.QueueInfo, error) {
 	if err := c.connect(); err != nil {
 		return nil, err
 	}
@@ -101,5 +115,9 @@ func (c *Client) InspectQueue(name string) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return info, nil
+	return &k6common.QueueInfo{
+		Name:      info.Name(),
+		Messages:  int(info.MessageCount()),
+		Consumers: int(info.ConsumerCount()),
+	}, nil
 }
