@@ -2,6 +2,7 @@ package amqp091
 
 import (
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/grafana/sobek"
@@ -19,23 +20,23 @@ const (
 
 // PublishOptions defines a message payload and its delivery options.
 type PublishOptions struct {
-	QueueName     string        `json:"queueName,omitempty"    js:"queueName"`
-	Body          []byte        `json:"body,omitempty"         js:"body"`
-	Headers       rmqamqp.Table `json:"headers,omitempty"      js:"headers"`
-	Exchange      string        `json:"exchange,omitempty"     js:"exchange"`
-	ContentType   string        `json:"contentType,omitempty"  js:"contentType"`
-	Mandatory     bool          `json:"mandatory,omitempty"    js:"mandatory"`
-	Immediate     bool          `json:"immediate,omitempty"    js:"immediate"`
-	Persistent    bool          `json:"persistent,omitempty"   js:"persistent"`
+	QueueName     string        `json:"queueName,omitempty"     js:"queueName"`
+	Body          []byte        `json:"body,omitempty"          js:"body"`
+	Headers       rmqamqp.Table `json:"headers,omitempty"       js:"headers"`
+	Exchange      string        `json:"exchange,omitempty"      js:"exchange"`
+	ContentType   string        `json:"contentType,omitempty"   js:"contentType"`
+	Mandatory     bool          `json:"mandatory,omitempty"     js:"mandatory"`
+	Immediate     bool          `json:"immediate,omitempty"     js:"immediate"`
+	Persistent    bool          `json:"persistent,omitempty"    js:"persistent"`
 	CorrelationID string        `json:"correlationId,omitempty" js:"correlationId"`
-	ReplyTo       string        `json:"replyTo,omitempty"      js:"replyTo"`
-	Expiration    string        `json:"expiration,omitempty"   js:"expiration"`
-	MessageID     string        `json:"messageId,omitempty"    js:"messageId"`
-	Timestamp     int64         `json:"timestamp,omitempty"    js:"timestamp"` // unix epoch seconds
-	Type          string        `json:"type,omitempty"         js:"type"`
-	UserID        string        `json:"userId,omitempty"       js:"userId"`
-	AppID         string        `json:"appId,omitempty"        js:"appId"`
-	RoutingKey    string        `json:"routingKey,omitempty"   js:"routingKey"`
+	ReplyTo       string        `json:"replyTo,omitempty"       js:"replyTo"`
+	Expiration    string        `json:"expiration,omitempty"    js:"expiration"`
+	MessageID     string        `json:"messageId,omitempty"     js:"messageId"`
+	Timestamp     int64         `json:"timestamp,omitempty"     js:"timestamp"` // unix epoch seconds
+	Type          string        `json:"type,omitempty"          js:"type"`
+	UserID        string        `json:"userId,omitempty"        js:"userId"`
+	AppID         string        `json:"appId,omitempty"         js:"appId"`
+	RoutingKey    string        `json:"routingKey,omitempty"    js:"routingKey"`
 }
 
 // Name satisfies k6common.PublishingOptions.
@@ -96,7 +97,8 @@ func (c *Client) Publish(opts *PublishOptions) error {
 }
 
 // PublishAsync delivers a message asynchronously and returns a Promise.
-// It opens a fresh channel per call to avoid concurrent-access issues.
+// It opens a dedicated channel with publisher confirms enabled; the promise
+// resolves only when the broker sends a positive acknowledgement (Ack).
 func (c *Client) PublishAsync(opts *PublishOptions) *sobek.Promise {
 	promise, resolve, reject := promises.New(c.vu)
 
@@ -111,10 +113,19 @@ func (c *Client) PublishAsync(opts *PublishOptions) *sobek.Promise {
 		return promise
 	}
 
+	// Enable publisher confirms on this dedicated channel.
+	if err := ch.Confirm(false); err != nil {
+		_ = ch.Close()
+		reject(err)
+		return promise
+	}
+
+	notifyPublish := ch.NotifyPublish(make(chan rmqamqp.Confirmation, 1))
 	publishing := opts.toAMQPPublishing()
 
 	go func() {
 		defer ch.Close() //nolint:errcheck
+
 		if err := ch.PublishWithContext(
 			c.vu.Context(),
 			opts.Exchange,
@@ -126,7 +137,17 @@ func (c *Client) PublishAsync(opts *PublishOptions) *sobek.Promise {
 			reject(err)
 			return
 		}
-		resolve(nil)
+
+		select {
+		case confirm := <-notifyPublish:
+			if confirm.Ack {
+				resolve(nil)
+			} else {
+				reject(errors.New("publishAsync: broker nacked the message"))
+			}
+		case <-c.vu.Context().Done():
+			reject(c.vu.Context().Err())
+		}
 	}()
 
 	return promise
